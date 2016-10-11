@@ -8,7 +8,7 @@ import asyncio, logging
 import aiomysql
 
 def log(sql, args=()):
-	loggin.info('SQL: %s' % sql)
+	logging.info('SQL: %s' % sql)
 #连接池	
 async def create_pool(loop, **kw):
 	logging.info('create database connection pool...')
@@ -20,11 +20,11 @@ async def create_pool(loop, **kw):
 		user = kw['user'],
 		password = kw['password'],
 		db = kw['db'],
-		charset = kw.get('charset', 'utf-8'),
+		charset = kw.get('charset', 'utf8'),
 		autocommit = kw.get('autocommit', True),
 		maxsize = kw.get('maxsize', 10),#最大连接数10
 		minsize = kw.get('minsize', 1),#最小连接数1
-		loop = loop
+		loop=loop
 	)
 
 #select语句，需要传入SQL语句和SQL参数	
@@ -65,7 +65,7 @@ def create_args_string(num):
 	L = []
 	for n in range(num):
 		L.append('?')
-	return ','.join(L)
+	return ', '.join(L)
 	
 class Field(object):
 	
@@ -80,7 +80,7 @@ class Field(object):
 	
 class StringField(Field):
 	
-	def __init__(self, name=None, primary_key=False,default=None,ddl='varchar(100)'):
+	def __init__(self, name=None, primary_key=False, default=None,ddl='varchar(100)'):
 		super().__init__(name, ddl, primary_key, default)
 		
 class BooleanField(Field):
@@ -91,7 +91,7 @@ class BooleanField(Field):
 class IntegerField(Field):
 	
 	def __init__(self, name=None, primary_key=False, default=0):
-		super().__init(name, 'bigint', primary_key, default)
+		super().__init__(name, 'bigint', primary_key, default)
 		
 class FloatField(Field):
 	
@@ -99,6 +99,7 @@ class FloatField(Field):
 		super().__init__(name, 'real', primary_key, default)
 	
 class TextField(Field):
+
 	def __init__(self, name=None, default=None):
 		super().__init__(name, 'text', False, default)
 		
@@ -122,18 +123,19 @@ class ModelMetaclass(type):
 						raise StandardError('Duplicate primary key for field: %s' % k)
 					primaryKey = k
 				else:
-					field.append(k)
+					fields.append(k)
 		if not primaryKey:
 			raise StandardError('Primary key not found.')
-		for k in mapping.keys():
+		for k in mappings.keys():
 			attrs.pop(k)
 		escaped_fields = list(map(lambda f: '`%s`' % f, fields))
-		attrs['__mapppings__'] = mappings #保存属性和列的映射关系
+		attrs['__mappings__'] = mappings #保存属性和列的映射关系
 		attrs['__table__'] = tableName
 		attrs['__primary_key__'] = primaryKey #主键属性名
-		attrs['__select__'] = 'select `%s` (%s, `%s`) values(%s)' % (primaryKey, ', '.join(escaped_fields), tableName)
+		attrs['__fields__'] = fields #除主键外的属性名
+		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
 		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
-		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f:'`%s=?`' % (mapping.get(f).name or f), fields)),primaryKey)
+		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)),primaryKey)
 		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
 		return type.__new__(cls, name, bases, attrs)
 
@@ -166,7 +168,7 @@ class Model(dict, metaclass = ModelMetaclass):
 		
 	@classmethod
 	async def findAll(cls, where=None, args=None, **kw):
-		' find object by where clause.'
+		' find objects by where clause.'
 		sql = [cls.__select__]
 		if where:
 			sql.append('where')
@@ -194,7 +196,7 @@ class Model(dict, metaclass = ModelMetaclass):
 	@classmethod
 	async def findNumber(cls, selectField, where=None, args=None):
 		' find number by select and where. '
-		sql = ['select %s _num_from `%s`' % (selectField, cls.__table__)]
+		sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
 		if where:
 			sql.append('where')
 			sql.append(where)
