@@ -33,11 +33,11 @@ async def select(sql, args, size = None):
 	global __pool
 	async with __pool.get() as conn:
 		async with conn.cursor(aiomysql.DictCursor) as cur:
-			await cur.execute(sql.replace('?', '%s'), args or ())
+			await cur.execute(sql.replace('?', '%s'), args or ())#replace(old,new[,count])返回一个被替代的行新序列，如果给出序号就只替换序号前的
 			if size:
-				rs = await cur.fetchmany(size)
+				rs = await cur.fetchmany(size)#fetchmany抓取的查询结果下size行，返回一个表，如果行不可用返回一个空表
 			else:
-				rs = await cur.fetchall()
+				rs = await cur.fetchall()#fetchall抓取所有(剩下)的查询结果，返回一个表，并记下这次操作影响的指针像素
 		logging.info('rows returned: %s' % len(rs))
 		return rs
 		
@@ -161,7 +161,7 @@ class Model(dict, metaclass = ModelMetaclass):
 		if value is None:
 			field = self.__mappings__[key]
 			if field.default is not None:
-				value = field.default() if callable(field.default) else field.default
+				value = field.default() if callable(field.default) else field.default#callable()出现可调用返回true，反之返回false() 可调用-->调用一个类时返回一个实例
 				logging.debug('using default value for %s: %s' % (key, str(value)))
 				setattr(self, key, value)
 		return value
