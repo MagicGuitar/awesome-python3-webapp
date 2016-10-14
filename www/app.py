@@ -26,15 +26,15 @@ def init_jinja2(app, **kw):
 		autoescape = kw.get('autoescape', True),
 		block_start_string = kw.get('block_start_string', '{%'),
 		block_end_string = kw.get('block_end_string', '%}'),
-		varable_start_string = kw.get('varable_start_string', '{{'),
-		varable_end_string = kw.get('varable_end_string', '}}'),
+		variable_start_string = kw.get('variable_start_string', '{{'),
+		variable_end_string = kw.get('variable_end_string', '}}'),
 		auto_reload = kw.get('auto_reload', True)
 	)
 	path = kw.get('path', None)
 	if path is None:
 		path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-	logging.info('sef jinja2 template path: %s' % path)
-	env = Environmen(loader=FileSystemLoader(path), **options)
+	logging.info('set jinja2 template path: %s' % path)
+	env = Environment(loader=FileSystemLoader(path), **options)
 	filters = kw.get('filters', None)
 	if filters is not None:
 		for name, f in filters.items():
@@ -56,10 +56,10 @@ async def data_factory(app, handler):
 				request.__data__= await request.post()
 				logging.info('request form: %s' % str(request.__data__))
 		return (await handler(request))
-	return parse_datas
+	return parse_data
 	
-async def reponse_factory(app, handler):
-	async def reponse(request):
+async def response_factory(app, handler):
+	async def response(request):
 		logging.info('Response handler...')
 		r = await handler(request)
 		if isinstance(r, web.StreamResponse):
@@ -71,13 +71,17 @@ async def reponse_factory(app, handler):
 		if isinstance(r, str):
 			if r.startswith('redirect:'):
 				return web.HTTPFound(r[9:])
-			resp = web.Response(body=r.encode(utf-8))
+			resp = web.Response(body=r.encode('utf-8'))
 			resp.content_type = 'text/html;charset=utf-8'
 			return resp
 		if isinstance(r, dict):
 			template = r.get('__template__')
 			if template is None:
 				resp = web.Response(body=json.dumps(r, ensure_ascii=False, default=lambda o: o.__dict__).encode('utf-8'))
+				resp.content_type = 'application/json;charset=utf-8'
+				return resp
+			else:
+				resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
 				resp.content_type = 'text/html;charset=utf-8'
 				return resp
 		if isinstance(r, int) and r >= 100 and r < 600:
@@ -101,17 +105,18 @@ def datetime_filter(t):
 	if delta < 86400:
 		return u'%s小时前' % (delta // 3600)
 	if delta < 604800:
-		return u'%s年%s月%s日' % (dt.year, dt.month, dt.day)
-
-#定义处理http访问请求的方法
-def index(request):
-	return web.Response(body=b'<h1>Awesome</h1>', content_type='text/html', charset = 'utf-8')
+		return u'%s天前' % (delta // 86400)
+	dt = datetime.fromtimestamp(t)
+	return u'%s年%s月%s日' % (dt.year, dt.month, dt.day)
 	
 async def init(loop):
-	#往web对象中加入消息循环，生成一个支持异步IO的对象
-	app = web.Application(loop=loop)
-	#将浏览器通过GET方式传过来的对根目录的请求转发给index函数处理
-	app.router.add_route('GET', '/', index)
+	await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='root', password='1234', db='awesome')
+	app = web.Application(loop=loop, middlewares=[
+		logger_factory, response_factory
+	])
+	init_jinja2(app, filters=dict(datetime=datetime_filter))
+	add_routes(app, 'handlers')
+	add_static(app)
 	#启动 监听127.0.0.1地址的9000端口
 	srv = await loop.create_server(app.make_handler(), '127.0.0.1', 9000)
 	logging.info('server started at http://127.0.0.1:9000...')
