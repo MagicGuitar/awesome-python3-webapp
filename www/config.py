@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Configuration
+Configuration.
 '''
 
 __author__ = 'HZC'
