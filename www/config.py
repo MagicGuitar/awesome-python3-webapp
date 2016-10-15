@@ -23,8 +23,8 @@ class Dict(dict):
 		try:
 			return self[key]
 		except KeyError:
-			rasie AttributeError(r"'Dict' object has no attribute '%s'" % key)
-		
+			raise AttributeError(r"'Dict' object has no attribute '%s'" % key)
+
 	def __setattr__(self, key, value):
 		self[key] = value
 			
