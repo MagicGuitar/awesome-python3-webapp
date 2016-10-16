@@ -5,7 +5,7 @@
 Models for usr, blog, commit.
 '''
 
-__author__ = 'Michael Liao'
+__author__ = 'HZC'
 
 import time, uuid
 

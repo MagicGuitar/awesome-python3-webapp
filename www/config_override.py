@@ -8,7 +8,7 @@ Override configurations
 __author__ = 'HZC'
 
 configs = {
-	'db':{
+	'db': {
 		'host': '127.0.0.1'
 	}
 }
